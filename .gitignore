@@ -1,0 +1,9 @@
+# Local config (may contain host names)
+config.json
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store

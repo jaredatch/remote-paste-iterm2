@@ -1,0 +1,21 @@
+{
+  "_comment": "Optional. Copy to ~/.config/remote-paste/config.json. Every key is optional; remote-paste auto-discovers sane defaults without it.",
+
+  "pngpaste": null,
+  "_pngpaste": "Path to pngpaste. null => search PATH + /opt/homebrew/bin + /usr/local/bin. Without pngpaste, the clipboard is read via osascript.",
+
+  "ssh": null,
+  "_ssh": "Path to the ssh binary. null => search PATH, default /usr/bin/ssh.",
+
+  "remote_tmux": null,
+  "_remote_tmux": "Path to tmux on the remote host. null => locate it on the remote at paste time (handles Homebrew vs /usr/bin).",
+
+  "remote_tmp": "/tmp/iterm-remote-paste.png",
+  "_remote_tmp": "Where the image is staged on the remote before being loaded onto its clipboard.",
+
+  "fallback_host": null,
+  "_fallback_host": "SSH host to use when a session is clearly a tmux -CC session but the host can't be parsed from its command line. e.g. \"my-server\".",
+
+  "profile_session_regex": null,
+  "_profile_session_regex": "Optional fallback for resolving the tmux session from the iTerm2 profile name when the command line doesn't contain `-s`. Group 1 must be the session. e.g. \"^Project (.+)$\"."
+}
