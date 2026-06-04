@@ -24,6 +24,11 @@ mkdir -p "$AUTOLAUNCH"
 cp "$SRC" "$DEST"
 ok "Installed → $DEST"
 
+# Stray __pycache__ here makes iTerm2 show a "Cannot Run Script: malformed"
+# dialog on every launch (it tries to run everything in AutoLaunch). It appears
+# if anything imports the deployed script, e.g. running tests against it.
+rm -rf "$AUTOLAUNCH/__pycache__"
+
 # 3. Optional dependency: pngpaste (osascript fallback exists, but pngpaste is nicer).
 if command -v pngpaste >/dev/null 2>&1; then
   ok "pngpaste found ($(command -v pngpaste))"

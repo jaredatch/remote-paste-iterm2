@@ -1,6 +1,9 @@
 # Local config (may contain host names)
 config.json
 
+# Maintainer notes — not for publication
+TODO.md
+
 # Python
 __pycache__/
 *.pyc
