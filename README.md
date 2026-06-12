@@ -102,6 +102,7 @@ tail -f ~/Library/Logs/remote_paste.log
 A successful paste writes a line like `paste[-CC]: host=my-server tmux=work image=148293 ok=True`.
 
 - **Pasting inserts literal `0x16`.** The script isn't delivering a real keystroke. Confirm the key binding is set to *Invoke Script Function* with exactly `remote_paste(session_id: id)`, and that the script is running (Scripts → Console).
+- **⌃V does nothing and no new log lines appear.** You likely have more than one copy of the script running, each fighting over the same RPC registration — this happens when you relaunch from Scripts → AutoLaunch without stopping the old copy first. Check with `pgrep -fl remote_paste.py`; you should see exactly one. The script now evicts older copies on startup, so relaunching it once clears the jam.
 - **"No image found in clipboard."** Your clipboard had no image when you pasted. On macOS, Cmd+Shift+Ctrl+4 copies a screenshot to the clipboard; plain Cmd+Shift+4 saves it to a file instead. If `image=0` shows in the log, the image never reached the script. Installing `pngpaste` helps with unusual clipboard formats.
 - **`pngpaste: command not found` in the log.** Harmless. The script falls back to osascript. Install `pngpaste` to silence it.
 - **Image lands in the wrong tmux pane.** remote-paste targets the active pane of the focused window. If you split a window and the focus tracking is off, open an issue.

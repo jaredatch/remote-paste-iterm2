@@ -89,3 +89,20 @@ def test_remote_tmux_expr_uses_configured_path():
 def test_remote_tmux_expr_probes_when_unset():
     expr = rp.remote_tmux_expr(None)
     assert "command -v tmux" in expr
+
+
+# --- sibling_pids (singleton guard) --------------------------------------- #
+
+def test_sibling_pids_excludes_self_and_parent():
+    # pgrep lists us (10), our wrapper parent (9), and one stale instance (42).
+    assert rp.sibling_pids("9\n10\n42\n", me=10, parent=9) == [42]
+
+def test_sibling_pids_none_to_kill_on_clean_start():
+    # First launch: only this process and its wrapper are present.
+    assert rp.sibling_pids("9\n10\n", me=10, parent=9) == []
+
+def test_sibling_pids_kills_multiple_duplicates():
+    assert rp.sibling_pids("9 10 14899 14913 25459", me=10, parent=9) == [14899, 14913, 25459]
+
+def test_sibling_pids_ignores_non_numeric_noise():
+    assert rp.sibling_pids("10\n\n  \nfoo\n42\n", me=10, parent=9) == [42]

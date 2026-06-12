@@ -48,11 +48,20 @@ import os
 import re
 import shlex
 import shutil
+import signal
 import subprocess
 import tempfile
+import time
 import traceback
 
 import iterm2
+
+__version__ = "1.1"
+
+# Marker matched (via pgrep -f) to find sibling copies of this script. iTerm2
+# relaunches AutoLaunch scripts without stopping the prior copy, so duplicates
+# pile up and fight over the same RPC registration — see ensure_single_instance.
+INSTANCE_MARKER = "AutoLaunch/remote_paste.py"
 
 # --------------------------------------------------------------------------- #
 # Configuration
@@ -262,7 +271,7 @@ async def main(connection):
     pngpaste = discover("pngpaste", cfg["pngpaste"],
                         ["/opt/homebrew/bin/pngpaste", "/usr/local/bin/pngpaste"])
     ssh = discover("ssh", cfg["ssh"], ["/usr/bin/ssh"]) or "ssh"
-    log("remote_paste: starting (pngpaste=%s ssh=%s)" % (pngpaste, ssh))
+    log("remote_paste %s: starting (pngpaste=%s ssh=%s)" % (__version__, pngpaste, ssh))
 
     app = await iterm2.async_get_app(connection)
 
@@ -325,5 +334,58 @@ async def main(connection):
     await asyncio.Future()  # stay alive so the RPC remains registered
 
 
+def sibling_pids(pgrep_output, me, parent):
+    """PIDs from `pgrep -f` output to terminate: everything but us and our parent.
+
+    The parent is excluded because it's the it2_api_wrapper.sh shell that launched
+    this script — its command line also matches the marker, but killing it would
+    take us down with it.
+    """
+    return [p for p in (int(x) for x in pgrep_output.split() if x.isdigit())
+            if p not in (me, parent)]
+
+
+def ensure_single_instance():
+    """Terminate any other running copies of this script before we register.
+
+    iTerm2 starts a *new* instance every time the script is launched (Scripts →
+    AutoLaunch) without stopping the old one, and each instance registers the same
+    `remote_paste` RPC. Multiple registrations make ⌃V dispatch ambiguous, so
+    invocations get routed to a stale instance and silently dropped. Killing
+    siblings on startup guarantees exactly one owner of the function.
+    """
+    me, parent = os.getpid(), os.getppid()
+    try:
+        out = subprocess.run(["/usr/bin/pgrep", "-f", INSTANCE_MARKER],
+                             capture_output=True, text=True, timeout=5).stdout
+    except Exception:
+        log("singleton: pgrep failed:\n" + traceback.format_exc())
+        return
+    others = sibling_pids(out, me, parent)
+    for pid in others:
+        try:
+            os.kill(pid, signal.SIGTERM)
+            log("singleton: terminated prior instance pid=%d" % pid)
+        except ProcessLookupError:
+            pass
+        except Exception:
+            log("singleton: kill pid=%d failed:\n%s" % (pid, traceback.format_exc()))
+    # Wait briefly for the killed instances' API connections to close so iTerm2
+    # frees the old registration before we claim it.
+    for _ in range(20):
+        if not any(_alive(p) for p in others):
+            break
+        time.sleep(0.05)
+
+
+def _alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
 if __name__ == "__main__":
+    ensure_single_instance()
     iterm2.run_forever(main)
